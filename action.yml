@@ -11,7 +11,7 @@ inputs:
 
 runs:
   using: 'docker'
-  image: 'Containerfile'
+  image: 'Dockerfile'
   env:
     GITHUB_TOKEN: ${{ inputs.github-token }}
     OWNERS_FILE: ${{ inputs.owners-file }}
