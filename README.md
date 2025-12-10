@@ -1,4 +1,4 @@
-# Owners Bot Action
+# Owners Files Action
 
 A GitHub Action that handles `/lgtm` and `/approve` commands on pull requests based on an OWNERS file.
 
@@ -10,10 +10,10 @@ A GitHub Action that handles `/lgtm` and `/approve` commands on pull requests ba
 
 ## Usage
 
-Create a workflow file (e.g., `.github/workflows/owners-bot.yml`):
+Create a workflow file (e.g., `.github/workflows/owners.yml`):
 
 ```yaml
-name: Owners Bot
+name: Owners File Action
 
 on:
   issue_comment:
@@ -31,8 +31,8 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v6
 
-      - name: Run Owners Bot
-        uses: acardace/owners-bot-action@v1.0
+      - name: Run Owners File Action
+        uses: coreos/owners-file-action@v1.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           owners-file: "OWNERS"
