@@ -1,0 +1,17 @@
+name: 'PR Gating Owners Bot'
+description: 'Handles /lgtm and /approve commands based on an OWNERS file'
+inputs:
+  github-token:
+    description: 'The GITHUB_TOKEN to perform API calls'
+    required: true
+  owners-file:
+    description: 'Path to the OWNERS file'
+    required: false
+    default: 'OWNERS'
+
+runs:
+  using: 'docker'
+  image: 'Containerfile'
+  env:
+    GITHUB_TOKEN: ${{ inputs.github-token }}
+    OWNERS_FILE: ${{ inputs.owners-file }}
