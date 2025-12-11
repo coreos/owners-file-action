@@ -39,7 +39,7 @@ def handle_label_event(event, token):
         requests.post(f"{api_url}/issues/{pr_number}/labels", json={"labels": [label_name]}, headers=headers)
 
 def handle_comment_event(event, token, owners_path):
-    """Handle comment events for /lgtm and /approve commands."""
+    """Handle comment events for /lgtm /approve /hold commands."""
     try:
         comment_body = event['comment']['body'].lower().strip()
         comment_author = event['comment']['user']['login']
@@ -95,6 +95,15 @@ def handle_comment_event(event, token, owners_path):
                 remove_label("approved")
             else:
                 add_label("approved")
+        else:
+            print(f"User {comment_author} is not in 'approvers' list.")
+
+    if "/hold" in words:
+        if comment_author in approvers:
+            if "/hold cancel" in comment_body:
+                remove_label("hold")
+            else:
+                add_label("hold")
         else:
             print(f"User {comment_author} is not in 'approvers' list.")
 

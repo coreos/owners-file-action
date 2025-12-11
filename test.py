@@ -187,5 +187,62 @@ class TestOwnersBot(unittest.TestCase):
         mock_post.assert_not_called()
         print("✅ Success: Unprotected label was ignored.")
 
+    @patch('requests.post')
+    def test_hold_success(self, mock_post):
+        print("\n--- Testing Valid /hold ---")
+
+        createGitHubEvent("approver", "/hold")
+        entrypoint.main()
+
+        mock_post.assert_called_with(
+            "https://api.github.com/repos/test/repo/issues/42/labels",
+            json={"labels": ["hold"]},
+            headers={'Authorization': 'Bearer dummy-token', 'Accept': 'application/vnd.github.v3+json'}
+        )
+        print("✅ Success: /hold added label.")
+
+    @patch('requests.post')
+    def test_unauthorized_hold(self, mock_post):
+        print("\n--- Testing Unauthorized /hold ---")
+
+        createGitHubEvent("reviewer", "/hold")
+        entrypoint.main()
+
+        mock_post.assert_not_called()
+        print("✅ Success: Reviewer cannot add hold label.")
+
+    @patch('requests.delete')
+    def test_hold_cancel(self, mock_delete):
+        print("\n--- Testing /hold cancel ---")
+
+        createGitHubEvent("approver", "/hold cancel")
+        entrypoint.main()
+
+        mock_delete.assert_called_with(
+            "https://api.github.com/repos/test/repo/issues/42/labels/hold",
+            headers={'Authorization': 'Bearer dummy-token', 'Accept': 'application/vnd.github.v3+json'}
+        )
+        print("✅ Success: Hold label removed.")
+
+    @patch('requests.delete')
+    def test_unauthorized_hold_cancel(self, mock_delete):
+        print("\n--- Testing unauthorized /hold cancel ---")
+
+        createGitHubEvent("reviewer", "/hold cancel")
+        entrypoint.main()
+
+        mock_delete.assert_not_called()
+        print("✅ Success: Reviewer cannot remove hold label.")
+
+    @patch('requests.post')
+    def test_exactly_hold(self, mock_post):
+        print("\n--- Testing random/hold doesn't get treated as /hold ---")
+
+        createGitHubEvent("approver", "random/hold")
+        entrypoint.main()
+
+        mock_post.assert_not_called()
+        print("✅ Success: command ignored.")
+
 if __name__ == '__main__':
     unittest.main()

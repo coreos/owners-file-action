@@ -1,10 +1,10 @@
 # Owners Files Action
 
-A GitHub Action that handles `/lgtm` and `/approve` commands on pull requests based on an OWNERS file.
+A GitHub Action that handles `/lgtm`, `/approve`, and `/hold` commands on pull requests based on an OWNERS file.
 
 ## Features
 
-- Responds to `/lgtm` and `/approve` comments on pull requests
+- Responds to `/lgtm`, `/approve`, and `/hold` comments on pull requests
 - Validates commenters against an OWNERS file
 - Automatically adds labels to PRs based on approvals
 - Prevents unauthorized manual label changes (protects `lgtm` and `approved` labels)
@@ -68,6 +68,9 @@ Comment on a pull request with these commands:
 - `/lgtm cancel` - Cancel a previous `/lgtm`
 - `/approve` - Approvers can approve the PR
 - `/approve cancel` - Cancel a previous `/approve`
+- `/hold` - Approvers can place a hold on the PR to prevent auto-merge
+- `/hold cancel` - Remove the hold
+
 
 ## Label Protection
 
