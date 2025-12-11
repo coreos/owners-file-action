@@ -4,12 +4,6 @@ import requests
 import json
 import sys
 
-def is_bot_action(event):
-    """Check if the current action is performed by the bot itself."""
-    actor = event.get('sender', {}).get('login', '')
-    github_actor = os.environ.get('GITHUB_ACTOR', '')
-    return actor == github_actor or 'bot' in actor.lower()
-
 def is_protected_label(label_name):
     return label_name in ['lgtm', 'approved']
 
@@ -18,12 +12,6 @@ def handle_label_event(event, token):
     action = event.get('action')
     if action not in ['labeled', 'unlabeled']:
         print(f"Not a label event (action: {action})")
-        return
-
-    print(f'github actor {event.get('sender', {}).get('login', '')}')
-    print(f'github actor env {os.environ.get('GITHUB_ACTOR', '')}')
-    if is_bot_action(event):
-        print("Label change by bot itself, skipping protection check")
         return
 
     label_name = event.get('label', {}).get('name', '')

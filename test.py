@@ -177,34 +177,6 @@ class TestOwnersBot(unittest.TestCase):
 
     @patch('requests.delete')
     @patch('requests.post')
-    def test_bot_label_addition_allowed(self, mock_post, mock_delete):
-        print("\n--- Testing Bot Label Addition Allowed ---")
-
-        os.environ["GITHUB_ACTOR"] = "github-actions[bot]"
-        createLabelEvent("github-actions[bot]", "labeled", "lgtm")
-        entrypoint.main()
-
-        mock_delete.assert_not_called()
-        mock_post.assert_not_called()
-        print("✅ Success: Bot's own label addition was not reverted.")
-        del os.environ["GITHUB_ACTOR"]
-
-    @patch('requests.delete')
-    @patch('requests.post')
-    def test_bot_label_removal_allowed(self, mock_post, mock_delete):
-        print("\n--- Testing Bot Label Removal Allowed ---")
-
-        os.environ["GITHUB_ACTOR"] = "github-actions[bot]"
-        createLabelEvent("github-actions[bot]", "unlabeled", "approved")
-        entrypoint.main()
-
-        mock_delete.assert_not_called()
-        mock_post.assert_not_called()
-        print("✅ Success: Bot's own label removal was not reverted.")
-        del os.environ["GITHUB_ACTOR"]
-
-    @patch('requests.delete')
-    @patch('requests.post')
     def test_unprotected_label_ignored(self, mock_post, mock_delete):
         print("\n--- Testing Unprotected Label Ignored ---")
 
