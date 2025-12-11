@@ -9,6 +9,11 @@ def is_protected_label(label_name):
 
 def check_and_merge(event, token):
     """Check if PR has required labels and merge if conditions are met."""
+    auto_merge = os.environ.get("AUTO_MERGE", "true").lower()
+    if auto_merge not in ["true", "1", "yes"]:
+        print("Auto-merge is disabled")
+        return
+
     try:
         pr_number = event['issue']['number']
         repo_full_name = event['repository']['full_name']

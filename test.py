@@ -420,5 +420,38 @@ class TestOwnersBot(unittest.TestCase):
 
         print("✅ Success: PR merged with rebase strategy.")
 
+    @patch('requests.put')
+    @patch('requests.get')
+    @patch('requests.post')
+    def test_auto_merge_disabled(self, mock_post, mock_get, mock_put):
+        print("\n--- Testing auto-merge disabled ---")
+
+        os.environ["AUTO_MERGE"] = "false"
+        createGitHubEvent("approver", "/approve")
+
+        # Mock the GET request to return PR with both labels
+        mock_pr_response = MagicMock()
+        mock_pr_response.status_code = 200
+        mock_pr_response.json.return_value = {
+            "labels": [
+                {"name": "lgtm"},
+                {"name": "approved"}
+            ]
+        }
+        mock_get.return_value = mock_pr_response
+
+        entrypoint.main()
+
+        # Label should still be added
+        mock_post.assert_called()
+        # But merge should not happen
+        mock_put.assert_not_called()
+
+        # Clean up
+        if "AUTO_MERGE" in os.environ:
+            del os.environ["AUTO_MERGE"]
+
+        print("✅ Success: Auto-merge was disabled.")
+
 if __name__ == '__main__':
     unittest.main()

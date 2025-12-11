@@ -44,6 +44,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           owners-file: "OWNERS"
         env:
+          AUTO_MERGE: true  # Optional: enable auto-merge (default: true)
           MERGE_STRATEGY: merge  # Optional: merge (default), squash, or rebase
 ```
 
@@ -83,11 +84,15 @@ The action automatically merges PRs when all conditions are met:
 - ✅ PR has the `approved` label (added by an approver)
 - ✅ PR does NOT have the `hold` label
 
-The merge will happen automatically after any comment command or label event. You can control the merge strategy using the `MERGE_STRATEGY` environment variable:
+The merge will happen automatically after any comment command or label event.
 
-- `merge` (default) - Creates a merge commit
-- `squash` - Squashes all commits into one
-- `rebase` - Rebases commits onto the base branch
+**Configuration:**
+
+- `AUTO_MERGE` - Enable or disable auto-merge (default: `true`). Set to `false` to disable.
+- `MERGE_STRATEGY` - Control the merge strategy:
+  - `merge` (default) - Creates a merge commit
+  - `squash` - Squashes all commits into one
+  - `rebase` - Rebases commits onto the base branch
 
 ## Label Protection
 
