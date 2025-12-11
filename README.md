@@ -8,6 +8,8 @@ A GitHub Action that handles `/lgtm`, `/approve`, and `/hold` commands on pull r
 - Validates commenters against an OWNERS file
 - Automatically adds labels to PRs based on approvals
 - Prevents unauthorized manual label changes (protects `lgtm` and `approved` labels)
+- Auto-merges PRs when both `lgtm` and `approved` labels are present (and no `hold` label)
+- Configurable merge strategy (merge, squash, or rebase)
 
 ## Usage
 
@@ -30,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
-      contents: read
+      contents: write  # Required for auto-merge functionality
 
     steps:
       - name: Checkout Code
@@ -41,6 +43,8 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           owners-file: "OWNERS"
+        env:
+          MERGE_STRATEGY: merge  # Optional: merge (default), squash, or rebase
 ```
 
 ## OWNERS File Format
@@ -71,6 +75,19 @@ Comment on a pull request with these commands:
 - `/hold` - Approvers can place a hold on the PR to prevent auto-merge
 - `/hold cancel` - Remove the hold
 
+## Auto-Merge
+
+The action automatically merges PRs when all conditions are met:
+
+- ✅ PR has the `lgtm` label (added by a reviewer)
+- ✅ PR has the `approved` label (added by an approver)
+- ✅ PR does NOT have the `hold` label
+
+The merge will happen automatically after any comment command or label event. You can control the merge strategy using the `MERGE_STRATEGY` environment variable:
+
+- `merge` (default) - Creates a merge commit
+- `squash` - Squashes all commits into one
+- `rebase` - Rebases commits onto the base branch
 
 ## Label Protection
 

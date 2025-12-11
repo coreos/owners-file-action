@@ -7,6 +7,47 @@ import sys
 def is_protected_label(label_name):
     return label_name in ['lgtm', 'approved']
 
+def check_and_merge(event, token):
+    """Check if PR has required labels and merge if conditions are met."""
+    try:
+        pr_number = event['issue']['number']
+        repo_full_name = event['repository']['full_name']
+    except KeyError:
+        print("Event does not appear to be a comment on an issue/PR.")
+        return
+
+    api_url = f"https://api.github.com/repos/{repo_full_name}"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+    response = requests.get(f"{api_url}/pulls/{pr_number}", headers=headers)
+    if response.status_code != 200:
+        print(f"Failed to get PR info: {response.status_code}")
+        return
+
+    labels = [label['name'] for label in response.json().get('labels', [])]
+
+    if 'lgtm' in labels and 'approved' in labels and 'hold' not in labels:
+        print(f"PR #{pr_number} has lgtm and approved labels, attempting to merge...")
+
+        merge_strategy = os.environ.get("MERGE_STRATEGY", "merge")
+        if merge_strategy not in ["merge", "squash", "rebase"]:
+            print(f"Invalid merge strategy: {merge_strategy}, using 'merge'")
+            merge_strategy = "merge"
+
+        print(f"Using merge strategy: {merge_strategy}")
+        merge_data = {"merge_strategy": merge_strategy}
+        merge_response = requests.put(f"{api_url}/pulls/{pr_number}/merge", json=merge_data, headers=headers)
+
+        if merge_response.status_code == 200:
+            print(f"✅ Successfully merged PR #{pr_number}")
+        else:
+            print(f"Failed to merge PR #{pr_number}: {merge_response.status_code} - {merge_response.text}")
+    else:
+        print(f"PR #{pr_number} not ready to merge. Labels: {labels}")
+
 def handle_label_event(event, token):
     """Handle label added/removed events to protect bot-managed labels."""
     action = event.get('action')
@@ -128,6 +169,8 @@ def main():
     else:
         print("Event type not recognized or not supported")
         sys.exit(0)
+
+    check_and_merge(event, token)
 
 if __name__ == "__main__":
     main()

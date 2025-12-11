@@ -244,5 +244,181 @@ class TestOwnersBot(unittest.TestCase):
         mock_post.assert_not_called()
         print("✅ Success: command ignored.")
 
+    @patch('requests.put')
+    @patch('requests.get')
+    def test_merge_when_ready(self, mock_get, mock_put):
+        print("\n--- Testing PR merges when lgtm and approved labels present ---")
+
+        createGitHubEvent("approver", "/approve")
+
+        # Mock the GET request to return PR with both labels
+        mock_pr_response = MagicMock()
+        mock_pr_response.status_code = 200
+        mock_pr_response.json.return_value = {
+            "labels": [
+                {"name": "lgtm"},
+                {"name": "approved"}
+            ]
+        }
+        mock_get.return_value = mock_pr_response
+
+        # Mock successful merge
+        mock_merge_response = MagicMock()
+        mock_merge_response.status_code = 200
+        mock_put.return_value = mock_merge_response
+
+        entrypoint.main()
+
+        mock_put.assert_called_with(
+            "https://api.github.com/repos/test/repo/pulls/42/merge",
+            json={"merge_strategy": "merge"},
+            headers={'Authorization': 'Bearer dummy-token', 'Accept': 'application/vnd.github.v3+json'}
+        )
+        print("✅ Success: PR merged when ready.")
+
+    @patch('requests.put')
+    @patch('requests.get')
+    def test_no_merge_when_only_lgtm(self, mock_get, mock_put):
+        print("\n--- Testing PR doesn't merge with only lgtm label ---")
+
+        createGitHubEvent("reviewer", "/lgtm")
+
+        # Mock the GET request to return PR with only lgtm
+        mock_pr_response = MagicMock()
+        mock_pr_response.status_code = 200
+        mock_pr_response.json.return_value = {
+            "labels": [
+                {"name": "lgtm"}
+            ]
+        }
+        mock_get.return_value = mock_pr_response
+
+        entrypoint.main()
+
+        mock_put.assert_not_called()
+        print("✅ Success: PR not merged with only lgtm.")
+
+    @patch('requests.put')
+    @patch('requests.get')
+    def test_no_merge_when_only_approved(self, mock_get, mock_put):
+        print("\n--- Testing PR doesn't merge with only approved label ---")
+
+        createGitHubEvent("approver", "/approve")
+
+        # Mock the GET request to return PR with only approved
+        mock_pr_response = MagicMock()
+        mock_pr_response.status_code = 200
+        mock_pr_response.json.return_value = {
+            "labels": [
+                {"name": "approved"}
+            ]
+        }
+        mock_get.return_value = mock_pr_response
+
+        entrypoint.main()
+
+        mock_put.assert_not_called()
+        print("✅ Success: PR not merged with only approved.")
+
+    @patch('requests.put')
+    @patch('requests.get')
+    def test_no_merge_when_hold_present(self, mock_get, mock_put):
+        print("\n--- Testing PR doesn't merge when hold label present ---")
+
+        createGitHubEvent("approver", "/approve")
+
+        # Mock the GET request to return PR with all labels including hold
+        mock_pr_response = MagicMock()
+        mock_pr_response.status_code = 200
+        mock_pr_response.json.return_value = {
+            "labels": [
+                {"name": "lgtm"},
+                {"name": "approved"},
+                {"name": "hold"}
+            ]
+        }
+        mock_get.return_value = mock_pr_response
+
+        entrypoint.main()
+
+        mock_put.assert_not_called()
+        print("✅ Success: PR not merged when hold is present.")
+
+    @patch('requests.put')
+    @patch('requests.get')
+    def test_merge_with_squash_strategy(self, mock_get, mock_put):
+        print("\n--- Testing PR merges with squash strategy ---")
+
+        os.environ["MERGE_STRATEGY"] = "squash"
+        createGitHubEvent("approver", "/approve")
+
+        # Mock the GET request to return PR with both labels
+        mock_pr_response = MagicMock()
+        mock_pr_response.status_code = 200
+        mock_pr_response.json.return_value = {
+            "labels": [
+                {"name": "lgtm"},
+                {"name": "approved"}
+            ]
+        }
+        mock_get.return_value = mock_pr_response
+
+        # Mock successful merge
+        mock_merge_response = MagicMock()
+        mock_merge_response.status_code = 200
+        mock_put.return_value = mock_merge_response
+
+        entrypoint.main()
+
+        mock_put.assert_called_with(
+            "https://api.github.com/repos/test/repo/pulls/42/merge",
+            json={"merge_strategy": "squash"},
+            headers={'Authorization': 'Bearer dummy-token', 'Accept': 'application/vnd.github.v3+json'}
+        )
+
+        # Clean up
+        if "MERGE_STRATEGY" in os.environ:
+            del os.environ["MERGE_STRATEGY"]
+
+        print("✅ Success: PR merged with squash strategy.")
+
+    @patch('requests.put')
+    @patch('requests.get')
+    def test_merge_with_rebase_strategy(self, mock_get, mock_put):
+        print("\n--- Testing PR merges with rebase strategy ---")
+
+        os.environ["MERGE_STRATEGY"] = "rebase"
+        createGitHubEvent("approver", "/approve")
+
+        # Mock the GET request to return PR with both labels
+        mock_pr_response = MagicMock()
+        mock_pr_response.status_code = 200
+        mock_pr_response.json.return_value = {
+            "labels": [
+                {"name": "lgtm"},
+                {"name": "approved"}
+            ]
+        }
+        mock_get.return_value = mock_pr_response
+
+        # Mock successful merge
+        mock_merge_response = MagicMock()
+        mock_merge_response.status_code = 200
+        mock_put.return_value = mock_merge_response
+
+        entrypoint.main()
+
+        mock_put.assert_called_with(
+            "https://api.github.com/repos/test/repo/pulls/42/merge",
+            json={"merge_strategy": "rebase"},
+            headers={'Authorization': 'Bearer dummy-token', 'Accept': 'application/vnd.github.v3+json'}
+        )
+
+        # Clean up
+        if "MERGE_STRATEGY" in os.environ:
+            del os.environ["MERGE_STRATEGY"]
+
+        print("✅ Success: PR merged with rebase strategy.")
+
 if __name__ == '__main__':
     unittest.main()
