@@ -7,6 +7,7 @@ A GitHub Action that handles `/lgtm` and `/approve` commands on pull requests ba
 - Responds to `/lgtm` and `/approve` comments on pull requests
 - Validates commenters against an OWNERS file
 - Automatically adds labels to PRs based on approvals
+- Prevents unauthorized manual label changes (protects `lgtm` and `approved` labels)
 
 ## Usage
 
@@ -18,10 +19,14 @@ name: Owners File Action
 on:
   issue_comment:
     types: [created]
+  pull_request:
+    types: [labeled, unlabeled]
 
 jobs:
-  handle-comment:
-    if: ${{ github.event.issue.pull_request }}
+  handle-events:
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request)
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -63,3 +68,13 @@ Comment on a pull request with these commands:
 - `/lgtm cancel` - Cancel a previous `/lgtm`
 - `/approve` - Approvers can approve the PR
 - `/approve cancel` - Cancel a previous `/approve`
+
+## Label Protection
+
+The action automatically protects the `lgtm` and `approved` labels from unauthorized manual changes:
+
+- **Manual label additions**: If someone tries to manually add these labels (bypassing the OWNERS file authorization), the bot will automatically remove them
+- **Manual label removals**: If someone tries to manually remove these labels (bypassing the cancel commands), the bot will automatically re-add them
+- **Bot-only management**: Only the bot itself can manage these labels through the `/lgtm`, `/approve`, and their cancel commands
+
+This ensures that the OWNERS file authorization process cannot be bypassed by directly manipulating labels through the GitHub UI.
