@@ -20,6 +20,8 @@ def handle_label_event(event, token):
         print(f"Not a label event (action: {action})")
         return
 
+    print(f'github actor {event.get('sender', {}).get('login', '')}')
+    print(f'github actor env {os.environ.get('GITHUB_ACTOR', '')}')
     if is_bot_action(event):
         print("Label change by bot itself, skipping protection check")
         return
