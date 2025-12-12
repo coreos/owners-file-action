@@ -6,6 +6,7 @@ A GitHub Action that handles `/lgtm`, `/approve`, and `/hold` commands on pull r
 
 - Responds to `/lgtm`, `/approve`, and `/hold` comments on pull requests
 - Validates commenters against an OWNERS file
+- Automatically assigns reviewers and approvers when PRs are opened
 - Automatically adds labels to PRs based on approvals
 - Prevents unauthorized manual label changes (protects `lgtm` and `approved` labels)
 - Auto-merges PRs when both `lgtm` and `approved` labels are present (and no `hold` label)
@@ -22,7 +23,7 @@ on:
   issue_comment:
     types: [created]
   pull_request:
-    types: [labeled, unlabeled]
+    types: [opened, labeled, unlabeled]
 
 jobs:
   handle-events:
@@ -44,6 +45,8 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           owners-file: "OWNERS"
         env:
+          AUTO_ASSIGN_REVIEWERS: 2  # Optional: number of reviewers to assign (default: 2)
+          AUTO_ASSIGN_APPROVERS: 1  # Optional: number of approvers to assign (default: 1)
           AUTO_MERGE: true  # Optional: enable auto-merge (default: true)
           MERGE_STRATEGY: merge  # Optional: merge (default), squash, or rebase
 ```
@@ -75,6 +78,22 @@ Comment on a pull request with these commands:
 - `/approve cancel` - Cancel a previous `/approve`
 - `/hold` - Approvers can place a hold on the PR to prevent auto-merge
 - `/hold cancel` - Remove the hold
+
+## Auto-Reviewer Assignment
+
+When a PR is opened, the action automatically assigns random reviewers and approvers from the OWNERS file:
+
+- Randomly selects reviewers from the `reviewers` list
+- Randomly selects approvers from the `approvers` list
+- Excludes the PR author from being assigned as a reviewer
+- Number of reviewers and approvers is configurable
+
+**Configuration:**
+
+- `AUTO_ASSIGN_REVIEWERS` - Number of reviewers to assign (default: `2`)
+- `AUTO_ASSIGN_APPROVERS` - Number of approvers to assign (default: `1`)
+
+**Example:** With the default settings, when a PR is opened, 2 random reviewers and 1 random approver will be automatically assigned to review the PR.
 
 ## Auto-Merge
 

@@ -29,6 +29,19 @@ def createLabelEvent(user, action, label):
     with open("event.json", "w") as f:
         json.dump(event, f)
 
+def createPROpenedEvent(author):
+    """Create a PR opened event."""
+    event = {
+        "action": "opened",
+        "pull_request": {
+            "number": 42,
+            "user": {"login": author}
+        },
+        "repository": {"full_name": "test/repo"}
+    }
+    with open("event.json", "w") as f:
+        json.dump(event, f)
+
 class TestOwnersBot(unittest.TestCase):
     def setUp(self):
         # 1. Create a dummy OWNERS file
@@ -452,6 +465,100 @@ class TestOwnersBot(unittest.TestCase):
             del os.environ["AUTO_MERGE"]
 
         print("✅ Success: Auto-merge was disabled.")
+
+    @patch('random.sample')
+    @patch('requests.post')
+    def test_assign_reviewers_on_pr_open(self, mock_post, mock_random):
+        print("\n--- Testing reviewer assignment on PR open ---")
+
+        mock_random.side_effect = [["reviewer"], ["approver"]]
+
+        owners_data = {
+            "approvers": ["approver", "approver2"],
+            "reviewers": ["reviewer", "reviewer2", "reviewer3"]
+        }
+        with open("OWNERS", "w") as f:
+            yaml.dump(owners_data, f)
+
+        createPROpenedEvent("pr-author")
+
+        mock_assign_response = MagicMock()
+        mock_assign_response.status_code = 201
+        mock_post.return_value = mock_assign_response
+
+        entrypoint.main()
+
+        mock_post.assert_called_with(
+            "https://api.github.com/repos/test/repo/pulls/42/requested_reviewers",
+            json={"reviewers": ["reviewer", "approver"]},
+            headers={'Authorization': 'Bearer dummy-token', 'Accept': 'application/vnd.github.v3+json'}
+        )
+        print("✅ Success: Reviewers assigned on PR open.")
+
+    @patch('random.sample')
+    @patch('requests.post')
+    def test_assign_custom_number_of_reviewers(self, mock_post, mock_random):
+        print("\n--- Testing custom number of reviewers ---")
+
+        os.environ["AUTO_ASSIGN_REVIEWERS"] = "3"
+        os.environ["AUTO_ASSIGN_APPROVERS"] = "2"
+
+        mock_random.side_effect = [["reviewer", "reviewer2", "reviewer3"], ["approver", "approver2"]]
+
+        owners_data = {
+            "approvers": ["approver", "approver2", "approver3"],
+            "reviewers": ["reviewer", "reviewer2", "reviewer3", "reviewer4"]
+        }
+        with open("OWNERS", "w") as f:
+            yaml.dump(owners_data, f)
+
+        createPROpenedEvent("pr-author")
+
+        mock_assign_response = MagicMock()
+        mock_assign_response.status_code = 201
+        mock_post.return_value = mock_assign_response
+
+        entrypoint.main()
+
+        # Verify correct number of reviewers assigned
+        call_args = mock_post.call_args
+        assigned_reviewers = call_args[1]['json']['reviewers']
+        self.assertEqual(len(assigned_reviewers), 5)
+
+        # Clean up
+        if "AUTO_ASSIGN_REVIEWERS" in os.environ:
+            del os.environ["AUTO_ASSIGN_REVIEWERS"]
+        if "AUTO_ASSIGN_APPROVERS" in os.environ:
+            del os.environ["AUTO_ASSIGN_APPROVERS"]
+
+        print("✅ Success: Custom number of reviewers assigned.")
+
+    @patch('requests.post')
+    def test_pr_author_not_assigned_as_reviewer(self, mock_post):
+        print("\n--- Testing PR author is not assigned as reviewer ---")
+
+        owners_data = {
+            "approvers": ["pr-author", "approver"],
+            "reviewers": ["pr-author", "reviewer"]
+        }
+        with open("OWNERS", "w") as f:
+            yaml.dump(owners_data, f)
+
+        createPROpenedEvent("pr-author")
+
+        mock_assign_response = MagicMock()
+        mock_assign_response.status_code = 201
+        mock_post.return_value = mock_assign_response
+
+        entrypoint.main()
+
+        # Verify PR author is not in assigned reviewers
+        if mock_post.called:
+            call_args = mock_post.call_args
+            assigned_reviewers = call_args[1]['json']['reviewers']
+            self.assertNotIn("pr-author", assigned_reviewers)
+
+        print("✅ Success: PR author not assigned as reviewer.")
 
 if __name__ == '__main__':
     unittest.main()

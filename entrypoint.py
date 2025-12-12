@@ -3,6 +3,7 @@ import yaml
 import requests
 import json
 import sys
+import random
 
 def is_protected_label(label_name):
     return label_name in ['lgtm', 'approved']
@@ -52,6 +53,63 @@ def check_and_merge(event, token):
             print(f"Failed to merge PR #{pr_number}: {merge_response.status_code} - {merge_response.text}")
     else:
         print(f"PR #{pr_number} not ready to merge. Labels: {labels}")
+
+def assign_reviewers(event, token, owners_path):
+    """Assign random reviewers and approvers when a PR is opened."""
+    try:
+        pr_number = event['pull_request']['number']
+        repo_full_name = event['repository']['full_name']
+        pr_author = event['pull_request']['user']['login']
+    except KeyError:
+        print("Event does not appear to be a PR opened event.")
+        return
+
+    workspace = os.environ.get("GITHUB_WORKSPACE", ".")
+    full_owners_path = os.path.join(workspace, owners_path)
+
+    print(f"Reading OWNERS from: {full_owners_path}")
+
+    try:
+        with open(full_owners_path, "r") as f:
+            owners_data = yaml.safe_load(f)
+    except FileNotFoundError:
+        print(f"ERROR: Could not find {owners_path} in the repository root.")
+        return
+
+    approvers = owners_data.get("approvers", [])
+    reviewers = owners_data.get("reviewers", [])
+
+    # Remove PR author from potential reviewers
+    approvers = [a for a in approvers if a != pr_author]
+    reviewers = [r for r in reviewers if r != pr_author]
+
+    num_reviewers = int(os.environ.get("AUTO_ASSIGN_REVIEWERS", "2"))
+    num_approvers = int(os.environ.get("AUTO_ASSIGN_APPROVERS", "1"))
+
+    selected_reviewers = random.sample(reviewers, min(num_reviewers, len(reviewers))) if reviewers else []
+    selected_approvers = random.sample(approvers, min(num_approvers, len(approvers))) if approvers else []
+
+    all_assignees = list(set(selected_reviewers + selected_approvers))
+
+    if not all_assignees:
+        print("No reviewers to assign.")
+        return
+
+    api_url = f"https://api.github.com/repos/{repo_full_name}"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+    print(f"Assigning reviewers: {selected_reviewers}, approvers: {selected_approvers}")
+
+    assign_data = {"reviewers": all_assignees}
+    response = requests.post(f"{api_url}/pulls/{pr_number}/requested_reviewers", json=assign_data, headers=headers)
+
+    if response.status_code == 201:
+        print(f"✅ Successfully assigned {len(all_assignees)} reviewer(s) to PR #{pr_number}")
+    else:
+        print(f"Failed to assign reviewers to PR #{pr_number}: {response.status_code} - {response.text}")
 
 def handle_label_event(event, token):
     """Handle label added/removed events to protect bot-managed labels."""
@@ -165,7 +223,10 @@ def main():
     with open(event_path, 'r') as f:
         event = json.load(f)
 
-    if 'pull_request' in event and event.get('action') in ['labeled', 'unlabeled']:
+    if 'pull_request' in event and event.get('action') == 'opened':
+        print("Detected PR opened event")
+        assign_reviewers(event, token, owners_path)
+    elif 'pull_request' in event and event.get('action') in ['labeled', 'unlabeled']:
         print(f"Detected label event: {event.get('action')}")
         handle_label_event(event, token)
     elif 'comment' in event:
